@@ -136,6 +136,7 @@ typedef struct {
     gchar*   socket_dir;
     gchar*   download_handler;
     gchar*   cookie_handler;
+    gchar*   cookie_file;
     gboolean always_insert_mode;
     gboolean show_status;
     gboolean insert_mode;

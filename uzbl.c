@@ -123,6 +123,7 @@ const struct {
     { "history_handler",     PTR(uzbl.behave.history_handler,     STR,  1,   NULL)},
     { "download_handler",    PTR(uzbl.behave.download_handler,    STR,  1,   NULL)},
     { "cookie_handler",      PTR(uzbl.behave.cookie_handler,      STR,  1,   cmd_cookie_handler)},
+    { "cookie_file",         PTR(uzbl.behave.cookie_file,         STR,  1,   NULL)},
     { "fifo_dir",            PTR(uzbl.behave.fifo_dir,            STR,  1,   cmd_fifo_dir)},
     { "socket_dir",          PTR(uzbl.behave.socket_dir,          STR,  1,   cmd_socket_dir)},
     { "http_debug",          PTR(uzbl.behave.http_debug,          INT,  1,   cmd_http_debug)},
@@ -2242,6 +2243,10 @@ settings_init () {
             printf ("No configuration file loaded.\n");
     }
 
+    if (uzbl.behave.cookie_file) {
+        SoupCookieJar *jar = soup_cookie_jar_text_new(uzbl.behave.cookie_file, FALSE);
+        soup_session_add_feature(n->soup_session, (SoupSessionFeature*) jar);
+    }
     g_signal_connect_after(n->soup_session, "request-started", G_CALLBACK(handle_cookies), NULL);
 }
 
