@@ -53,11 +53,11 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
-#include "cookie-handler.c"
 #include "uzbl.h"
 #include "config.h"
-
 static Uzbl uzbl;
+#include "cookie-handler.c"
+
 typedef void (*Command)(WebKitWebView*, GArray *argv);
 
 
@@ -2275,33 +2275,9 @@ settings_init () {
     }
 
     if (uzbl.behave.cookie_handler) {
-        SoupSessionFeature *handler = cookie_handler_new(uzbl.behave.cookie_handler);
-        soup_session_add_feature(n->soup_session, handler);
+        CookieHandler *handler = cookie_handler_new(uzbl.behave.cookie_handler);
+        soup_session_add_feature(n->soup_session, (SoupSessionFeature*) handler);
     }
-    //g_signal_connect_after(n->soup_session, "request-started", G_CALLBACK(handle_cookies), NULL);
-}
-
-static void handle_cookies (SoupSession *session, SoupMessage *msg, gpointer user_data){
-    (void) session;
-    (void) user_data;
-    if (!uzbl.behave.cookie_handler)
-         return;
-
-    soup_message_add_header_handler(msg, "got-headers", "Set-Cookie", G_CALLBACK(save_cookies), NULL);
-    GString *s = g_string_new ("");
-    SoupURI * soup_uri = soup_message_get_uri(msg);
-    g_string_printf(s, "GET '%s' '%s'", soup_uri->host, soup_uri->path);
-    run_handler(uzbl.behave.cookie_handler, s->str);
-
-    if(uzbl.comm.sync_stdout && strcmp (uzbl.comm.sync_stdout, "") != 0) {
-        char *p = strchr(uzbl.comm.sync_stdout, '\n' );
-        if ( p != NULL ) *p = '\0';
-        soup_message_headers_replace (msg->request_headers, "Cookie", (const char *) uzbl.comm.sync_stdout);
-    }
-    if (uzbl.comm.sync_stdout)
-        uzbl.comm.sync_stdout = strfree(uzbl.comm.sync_stdout);
-        
-    g_string_free(s, TRUE);
 }
 
 static void

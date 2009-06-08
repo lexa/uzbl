@@ -1,4 +1,4 @@
-/* -*- Mode: C; tab-width: 8; indent-tabs-mode: t; c-basic-offset: 8 -*- */
+/* -*- c-basic-offset: 4; -*- */
 /*
  * Copyright (C) 2008 Red Hat, Inc.
  */
@@ -62,3 +62,4 @@ GSList        *cookie_handler_all_cookies   (CookieHandler *handler);
 G_END_DECLS
 
 #endif /* COOKIE_HANDLER_H */
+/* vi: set et ts=4: */
