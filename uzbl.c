@@ -2275,7 +2275,7 @@ settings_init () {
     }
 
     if (uzbl.behave.cookie_handler) {
-        SoupSessionFeature *handler = soup_cookie_handler_new(uzbl.behave.cookie_handler);
+        SoupSessionFeature *handler = cookie_handler_new(uzbl.behave.cookie_handler);
         soup_session_add_feature(n->soup_session, handler);
     }
     //g_signal_connect_after(n->soup_session, "request-started", G_CALLBACK(handle_cookies), NULL);

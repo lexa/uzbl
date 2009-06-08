@@ -3,32 +3,32 @@
  * Copyright (C) 2008 Red Hat, Inc.
  */
 
-#ifndef SOUP_COOKIE_HANDLER_H
-#define SOUP_COOKIE_HANDLER_H 1
+#ifndef COOKIE_HANDLER_H
+#define COOKIE_HANDLER_H 1
 
 #include <libsoup/soup-types.h>
 
 G_BEGIN_DECLS
 
-#define SOUP_TYPE_COOKIE_HANDLER            (soup_cookie_handler_get_type ())
-#define SOUP_COOKIE_HANDLER(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), SOUP_TYPE_COOKIE_HANDLER, SoupCookieHandler))
-#define SOUP_COOKIE_HANDLER_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass), SOUP_TYPE_COOKIE_HANDLER, SoupCookieHandlerClass))
+#define SOUP_TYPE_COOKIE_HANDLER            (cookie_handler_get_type ())
+#define COOKIE_HANDLER(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), SOUP_TYPE_COOKIE_HANDLER, CookieHandler))
+#define COOKIE_HANDLER_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass), SOUP_TYPE_COOKIE_HANDLER, CookieHandlerClass))
 #define SOUP_IS_COOKIE_HANDLER(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), SOUP_TYPE_COOKIE_HANDLER))
 #define SOUP_IS_COOKIE_HANDLER_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((obj), SOUP_TYPE_COOKIE_HANDLER))
-#define SOUP_COOKIE_HANDLER_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), SOUP_TYPE_COOKIE_HANDLER, SoupCookieHandlerClass))
+#define COOKIE_HANDLER_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), SOUP_TYPE_COOKIE_HANDLER, CookieHandlerClass))
 
 typedef struct {
 	GObject parent;
 
-} SoupCookieHandler;
+} CookieHandler;
 
 typedef struct {
 	GObjectClass parent_class;
 
-	void (*save)    (SoupCookieHandler *handler);
+	void (*save)    (CookieHandler *handler);
 
 	/* signals */
-	void (*changed) (SoupCookieHandler *handler,
+	void (*changed) (CookieHandler *handler,
 			 SoupCookie    *old_cookie,
 			 SoupCookie    *new_cookie);
 
@@ -36,33 +36,29 @@ typedef struct {
 	void (*_libsoup_reserved1) (void);
 	void (*_libsoup_reserved2) (void);
 	void (*_libsoup_reserved3) (void);
-} SoupCookieHandlerClass;
+} CookieHandlerClass;
 
-#define SOUP_COOKIE_HANDLER_HANDLER "handler"
+#define COOKIE_HANDLER_HANDLER "handler"
 
-GType          soup_cookie_handler_get_type      (void);
+GType          cookie_handler_get_type      (void);
 
-SoupCookieHandler *soup_cookie_handler_new           (const char *handler);
+CookieHandler *cookie_handler_new           (const char *handler);
 
-#ifndef LIBSOUP_DISABLE_DEPRECATED
-void           soup_cookie_handler_save          (SoupCookieHandler *handler);
-#endif
-
-char          *soup_cookie_handler_get_cookies   (SoupCookieHandler *handler,
+char          *cookie_handler_get_cookies   (CookieHandler *handler,
 					      SoupURI       *uri,
 					      gboolean       for_http);
-void           soup_cookie_handler_set_cookie    (SoupCookieHandler *handler,
+void           cookie_handler_set_cookie    (CookieHandler *handler,
 					      SoupURI       *uri,
 					      const char    *cookie);
 
-void           soup_cookie_handler_add_cookie    (SoupCookieHandler *handler,
+void           cookie_handler_add_cookie    (CookieHandler *handler,
 					      SoupCookie    *cookie);
-void           soup_cookie_handler_delete_cookie (SoupCookieHandler *handler,
+void           cookie_handler_delete_cookie (CookieHandler *handler,
 					      SoupCookie    *cookie);
 
-GSList        *soup_cookie_handler_all_cookies   (SoupCookieHandler *handler);
+GSList        *cookie_handler_all_cookies   (CookieHandler *handler);
 
 
 G_END_DECLS
 
-#endif /* SOUP_COOKIE_HANDLER_H */
+#endif /* COOKIE_HANDLER_H */

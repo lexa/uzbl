@@ -24,17 +24,17 @@
  * SECTION:soup-cookie-handler
  * @short_description: Automatic cookie handling for #SoupSession
  *
- * A #SoupCookieHandler stores #SoupCookie<!-- -->s and arrange for them
+ * A #CookieHandler stores #SoupCookie<!-- -->s and arrange for them
  * to be sent with the appropriate #SoupMessage<!-- -->s.
- * #SoupCookieHandler implements #SoupSessionFeature, so you can add a
+ * #CookieHandler implements #SoupSessionFeature, so you can add a
  * cookie handler to a session with soup_session_add_feature() or
  * soup_session_add_feature_by_type().
  *
- * Note that the base #SoupCookieHandler class does not support any form
+ * Note that the base #CookieHandler class does not support any form
  * of long-term cookie persistence.
  **/
 
-static void soup_cookie_handler_session_feature_init (SoupSessionFeatureInterface *feature_interface, gpointer interface_data);
+static void cookie_handler_session_feature_init (SoupSessionFeatureInterface *feature_interface, gpointer interface_data);
 static void request_queued (SoupSessionFeature *feature, SoupSession *session,
 			    SoupMessage *msg);
 static void request_started (SoupSessionFeature *feature, SoupSession *session,
@@ -42,9 +42,9 @@ static void request_started (SoupSessionFeature *feature, SoupSession *session,
 static void request_unqueued (SoupSessionFeature *feature, SoupSession *session,
 			      SoupMessage *msg);
 
-G_DEFINE_TYPE_WITH_CODE (SoupCookieHandler, soup_cookie_handler, G_TYPE_OBJECT,
+G_DEFINE_TYPE_WITH_CODE (CookieHandler, cookie_handler, G_TYPE_OBJECT,
 			 G_IMPLEMENT_INTERFACE (SOUP_TYPE_SESSION_FEATURE,
-						soup_cookie_handler_session_feature_init))
+						cookie_handler_session_feature_init))
 
 enum {
 	CHANGED,
@@ -65,8 +65,8 @@ typedef struct {
 	gboolean constructed;
         char *handler;
 	GHashTable *domains;
-} SoupCookieHandlerPrivate;
-#define SOUP_COOKIE_HANDLER_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), SOUP_TYPE_COOKIE_HANDLER, SoupCookieHandlerPrivate))
+} CookieHandlerPrivate;
+#define COOKIE_HANDLER_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), SOUP_TYPE_COOKIE_HANDLER, CookieHandlerPrivate))
 
 static void set_property (GObject *object, guint prop_id,
 			  const GValue *value, GParamSpec *pspec);
@@ -74,9 +74,9 @@ static void get_property (GObject *object, guint prop_id,
 			  GValue *value, GParamSpec *pspec);
 
 static void
-soup_cookie_handler_init (SoupCookieHandler *handler)
+cookie_handler_init (CookieHandler *handler)
 {
-	SoupCookieHandlerPrivate *priv = SOUP_COOKIE_HANDLER_GET_PRIVATE (handler);
+	CookieHandlerPrivate *priv = COOKIE_HANDLER_GET_PRIVATE (handler);
 
 	priv->domains = g_hash_table_new_full (g_str_hash, g_str_equal,
 					       g_free, NULL);
@@ -85,7 +85,7 @@ soup_cookie_handler_init (SoupCookieHandler *handler)
 static void
 constructed (GObject *object)
 {
-	SoupCookieHandlerPrivate *priv = SOUP_COOKIE_HANDLER_GET_PRIVATE (object);
+	CookieHandlerPrivate *priv = COOKIE_HANDLER_GET_PRIVATE (object);
 
 	priv->constructed = TRUE;
 }
@@ -93,7 +93,7 @@ constructed (GObject *object)
 static void
 finalize (GObject *object)
 {
-	SoupCookieHandlerPrivate *priv = SOUP_COOKIE_HANDLER_GET_PRIVATE (object);
+	CookieHandlerPrivate *priv = COOKIE_HANDLER_GET_PRIVATE (object);
 	GHashTableIter iter;
 	gpointer key, value;
 
@@ -102,15 +102,15 @@ finalize (GObject *object)
 		soup_cookies_free (value);
 	g_hash_table_destroy (priv->domains);
 
-	G_OBJECT_CLASS (soup_cookie_handler_parent_class)->finalize (object);
+	G_OBJECT_CLASS (cookie_handler_parent_class)->finalize (object);
 }
 
 static void
-soup_cookie_handler_class_init (SoupCookieHandlerClass *handler_class)
+cookie_handler_class_init (CookieHandlerClass *handler_class)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (handler_class);
 
-	g_type_class_add_private (handler_class, sizeof (SoupCookieHandlerPrivate));
+	g_type_class_add_private (handler_class, sizeof (CookieHandlerPrivate));
 
 	object_class->constructed = constructed;
 	object_class->finalize = finalize;
@@ -118,8 +118,8 @@ soup_cookie_handler_class_init (SoupCookieHandlerClass *handler_class)
 	object_class->get_property = get_property;
 
 	/**
-	 * SoupCookieHandler::changed
-	 * @handler: the #SoupCookieHandler
+	 * CookieHandler::changed
+	 * @handler: the #CookieHandler
 	 * @old_cookie: the old #SoupCookie value
 	 * @new_cookie: the new #SoupCookie value
 	 *
@@ -135,7 +135,7 @@ soup_cookie_handler_class_init (SoupCookieHandlerClass *handler_class)
 		g_signal_new ("changed",
 			      G_OBJECT_CLASS_TYPE (object_class),
 			      G_SIGNAL_RUN_FIRST,
-			      G_STRUCT_OFFSET (SoupCookieHandlerClass, changed),
+			      G_STRUCT_OFFSET (CookieHandlerClass, changed),
 			      NULL, NULL,
                               NULL,
 			      G_TYPE_NONE, 2, 
@@ -143,14 +143,14 @@ soup_cookie_handler_class_init (SoupCookieHandlerClass *handler_class)
 			      SOUP_TYPE_COOKIE | G_SIGNAL_TYPE_STATIC_SCOPE);
 
 	/**
-	 * SOUP_COOKIE_HANDLER_HANDLER:
+	 * COOKIE_HANDLER_HANDLER:
 	 *
-	 * Alias for the #SoupCookieHandler:read-only property. (Whether
+	 * Alias for the #CookieHandler:read-only property. (Whether
 	 * or not the cookie handler is read-only.)
 	 **/
 	g_object_class_install_property (
 		object_class, PROP_HANDLER,
-		g_param_spec_string (SOUP_COOKIE_HANDLER_HANDLER,
+		g_param_spec_string (COOKIE_HANDLER_HANDLER,
 				      "Handler",
 				      "The programme to handle cookies",
 				      NULL,
@@ -158,7 +158,7 @@ soup_cookie_handler_class_init (SoupCookieHandlerClass *handler_class)
 }
 
 static void
-soup_cookie_handler_session_feature_init (SoupSessionFeatureInterface *feature_interface,
+cookie_handler_session_feature_init (SoupSessionFeatureInterface *feature_interface,
 				      gpointer interface_data)
 {
 	feature_interface->request_queued = request_queued;
@@ -170,8 +170,8 @@ static void
 set_property (GObject *object, guint prop_id,
 	      const GValue *value, GParamSpec *pspec)
 {
-	SoupCookieHandlerPrivate *priv =
-		SOUP_COOKIE_HANDLER_GET_PRIVATE (object);
+	CookieHandlerPrivate *priv =
+		COOKIE_HANDLER_GET_PRIVATE (object);
 
 	switch (prop_id) {
 	case PROP_HANDLER:
@@ -187,8 +187,8 @@ static void
 get_property (GObject *object, guint prop_id,
 	      GValue *value, GParamSpec *pspec)
 {
-	SoupCookieHandlerPrivate *priv =
-		SOUP_COOKIE_HANDLER_GET_PRIVATE (object);
+	CookieHandlerPrivate *priv =
+		COOKIE_HANDLER_GET_PRIVATE (object);
 
 	switch (prop_id) {
 	case PROP_HANDLER:
@@ -201,36 +201,30 @@ get_property (GObject *object, guint prop_id,
 }
 
 /**
- * soup_cookie_handler_new:
+ * cookie_handler_new:
  *
- * Creates a new #SoupCookieHandler. The base #SoupCookieHandler class does
+ * Creates a new #CookieHandler. The base #CookieHandler class does
  * not support persistent storage of cookies; use a subclass for that.
  *
- * Returns: a new #SoupCookieHandler
+ * Returns: a new #CookieHandler
  *
  * Since: 2.24
  **/
-SoupCookieHandler *
-soup_cookie_handler_new (const char *handler)
+CookieHandler *
+cookie_handler_new (const char *handler)
 {
 	g_return_val_if_fail (handler != NULL, NULL);
 
 	return g_object_new (SOUP_TYPE_COOKIE_HANDLER,
-			     SOUP_COOKIE_HANDLER_HANDLER, handler,
+			     COOKIE_HANDLER_HANDLER, handler,
 			     NULL);
 }
 
-void
-soup_cookie_handler_save (SoupCookieHandler *handler)
-{
-	/* Does nothing, obsolete */
-}
-
 static void
-soup_cookie_handler_changed (SoupCookieHandler *handler,
+cookie_handler_changed (CookieHandler *handler,
 			 SoupCookie *old, SoupCookie *new)
 {
-	SoupCookieHandlerPrivate *priv = SOUP_COOKIE_HANDLER_GET_PRIVATE (handler);
+	CookieHandlerPrivate *priv = COOKIE_HANDLER_GET_PRIVATE (handler);
 
 	if (!priv->handler || !priv->constructed)
 		return;
@@ -239,8 +233,8 @@ soup_cookie_handler_changed (SoupCookieHandler *handler,
 }
 
 /**
- * soup_cookie_handler_get_cookies:
- * @handler: a #SoupCookieHandler
+ * cookie_handler_get_cookies:
+ * @handler: a #CookieHandler
  * @uri: a #SoupURI
  * @for_http: whether or not the return value is being passed directly
  * to an HTTP operation
@@ -251,7 +245,7 @@ soup_cookie_handler_changed (SoupCookieHandler *handler,
  * If @for_http is %TRUE, the return value will include cookies marked
  * "HttpOnly" (that is, cookies that the server wishes to keep hidden
  * from client-side scripting operations such as the JavaScript
- * document.cookies property). Since #SoupCookieHandler sets the Cookie
+ * document.cookies property). Since #CookieHandler sets the Cookie
  * header itself when making the actual HTTP request, you should
  * almost certainly be setting @for_http to %FALSE if you are calling
  * this.
@@ -262,16 +256,16 @@ soup_cookie_handler_changed (SoupCookieHandler *handler,
  * Since: 2.24
  **/
 char *
-soup_cookie_handler_get_cookies (SoupCookieHandler *handler, SoupURI *uri,
+cookie_handler_get_cookies (CookieHandler *handler, SoupURI *uri,
 			     gboolean for_http)
 {
-	SoupCookieHandlerPrivate *priv;
+	CookieHandlerPrivate *priv;
 	GSList *cookies, *domain_cookies;
 	char *domain, *cur, *next_domain, *result;
 	GSList *new_head, *cookies_to_remove = NULL, *p;
 
 	g_return_val_if_fail (SOUP_IS_COOKIE_HANDLER (handler), NULL);
-	priv = SOUP_COOKIE_HANDLER_GET_PRIVATE (handler);
+	priv = COOKIE_HANDLER_GET_PRIVATE (handler);
 
 	/* The logic here is a little weird, but the plan is that if
 	 * uri->host is "www.foo.com", we will end up looking up
@@ -309,7 +303,7 @@ soup_cookie_handler_get_cookies (SoupCookieHandler *handler, SoupURI *uri,
 	for (p = cookies_to_remove; p; p = p->next) {
 		SoupCookie *cookie = p->data;
 
-		soup_cookie_handler_changed (handler, cookie, NULL);
+		cookie_handler_changed (handler, cookie, NULL);
 		soup_cookie_free (cookie);
 	}
 	g_slist_free (cookies_to_remove);
@@ -324,8 +318,8 @@ soup_cookie_handler_get_cookies (SoupCookieHandler *handler, SoupURI *uri,
 }
 
 /**
- * soup_cookie_handler_add_cookie:
- * @handler: a #SoupCookieHandler
+ * cookie_handler_add_cookie:
+ * @handler: a #CookieHandler
  * @cookie: a #SoupCookie
  *
  * Adds @cookie to @handler, emitting the 'changed' signal if we are modifying
@@ -337,16 +331,16 @@ soup_cookie_handler_get_cookies (SoupCookieHandler *handler, SoupURI *uri,
  * Since: 2.24
  **/
 void
-soup_cookie_handler_add_cookie (SoupCookieHandler *handler, SoupCookie *cookie)
+cookie_handler_add_cookie (CookieHandler *handler, SoupCookie *cookie)
 {
-	SoupCookieHandlerPrivate *priv;
+	CookieHandlerPrivate *priv;
 	GSList *old_cookies, *oc, *prev = NULL;
 	SoupCookie *old_cookie;
 
 	g_return_if_fail (SOUP_IS_COOKIE_HANDLER (handler));
 	g_return_if_fail (cookie != NULL);
 
-	priv = SOUP_COOKIE_HANDLER_GET_PRIVATE (handler);
+	priv = COOKIE_HANDLER_GET_PRIVATE (handler);
 	old_cookies = g_hash_table_lookup (priv->domains, cookie->domain);
 	for (oc = old_cookies; oc; oc = oc->next) {
 		old_cookie = oc->data;
@@ -362,12 +356,12 @@ soup_cookie_handler_add_cookie (SoupCookieHandler *handler, SoupCookie *cookie)
 				g_hash_table_insert (priv->domains,
 						     g_strdup (cookie->domain),
 						     old_cookies);
-				soup_cookie_handler_changed (handler, old_cookie, NULL);
+				cookie_handler_changed (handler, old_cookie, NULL);
 				soup_cookie_free (old_cookie);
 				soup_cookie_free (cookie);
 			} else {
 				oc->data = cookie;
-				soup_cookie_handler_changed (handler, old_cookie, cookie);
+				cookie_handler_changed (handler, old_cookie, cookie);
 				soup_cookie_free (old_cookie);
 			}
 
@@ -390,12 +384,12 @@ soup_cookie_handler_add_cookie (SoupCookieHandler *handler, SoupCookie *cookie)
 				     old_cookies);
 	}
 
-	soup_cookie_handler_changed (handler, NULL, cookie);
+	cookie_handler_changed (handler, NULL, cookie);
 }
 
 /**
- * soup_cookie_handler_set_cookie:
- * @handler: a #SoupCookieHandler
+ * cookie_handler_set_cookie:
+ * @handler: a #CookieHandler
  * @uri: the URI setting the cookie
  * @cookie: the stringified cookie to set
  *
@@ -405,7 +399,7 @@ soup_cookie_handler_add_cookie (SoupCookieHandler *handler, SoupCookie *cookie)
  * Since: 2.24
  **/
 void
-soup_cookie_handler_set_cookie (SoupCookieHandler *handler, SoupURI *uri,
+cookie_handler_set_cookie (CookieHandler *handler, SoupURI *uri,
 			    const char *cookie)
 {
 	SoupCookie *soup_cookie;
@@ -416,19 +410,19 @@ soup_cookie_handler_set_cookie (SoupCookieHandler *handler, SoupURI *uri,
 	soup_cookie = soup_cookie_parse (cookie, uri);
 	if (soup_cookie) {
 		/* will steal or free soup_cookie */
-		soup_cookie_handler_add_cookie (handler, soup_cookie);
+		cookie_handler_add_cookie (handler, soup_cookie);
 	}
 }
 
 static void
 process_set_cookie_header (SoupMessage *msg, gpointer user_data)
 {
-	SoupCookieHandler *handler = user_data;
+	CookieHandler *handler = user_data;
 	GSList *new_cookies, *nc;
 
 	new_cookies = soup_cookies_from_response (msg);
 	for (nc = new_cookies; nc; nc = nc->next)
-		soup_cookie_handler_add_cookie (handler, nc->data);
+		cookie_handler_add_cookie (handler, nc->data);
 	g_slist_free (new_cookies);
 }
 
@@ -446,10 +440,10 @@ static void
 request_started (SoupSessionFeature *feature, SoupSession *session,
 		 SoupMessage *msg, SoupSocket *socket)
 {
-	SoupCookieHandler *handler = SOUP_COOKIE_HANDLER (feature);
+	CookieHandler *handler = COOKIE_HANDLER (feature);
 	char *cookies;
 
-	cookies = soup_cookie_handler_get_cookies (handler, soup_message_get_uri (msg), TRUE);
+	cookies = cookie_handler_get_cookies (handler, soup_message_get_uri (msg), TRUE);
 	if (cookies) {
 		soup_message_headers_replace (msg->request_headers,
 					      "Cookie", cookies);
@@ -466,8 +460,8 @@ request_unqueued (SoupSessionFeature *feature, SoupSession *session,
 }
 
 /**
- * soup_cookie_handler_all_cookies:
- * @handler: a #SoupCookieHandler
+ * cookie_handler_all_cookies:
+ * @handler: a #CookieHandler
  *
  * Constructs a #GSList with every cookie inside the @handler.
  * The cookies in the list are a copy of the original, so
@@ -478,16 +472,16 @@ request_unqueued (SoupSessionFeature *feature, SoupSession *session,
  * Since: 2.24
  **/
 GSList *
-soup_cookie_handler_all_cookies (SoupCookieHandler *handler)
+cookie_handler_all_cookies (CookieHandler *handler)
 {
-	SoupCookieHandlerPrivate *priv;
+	CookieHandlerPrivate *priv;
 	GHashTableIter iter;
 	GSList *l = NULL;
 	gpointer key, value;
 
 	g_return_val_if_fail (SOUP_IS_COOKIE_HANDLER (handler), NULL);
 
-	priv = SOUP_COOKIE_HANDLER_GET_PRIVATE (handler);
+	priv = COOKIE_HANDLER_GET_PRIVATE (handler);
 
 	g_hash_table_iter_init (&iter, priv->domains);
 
@@ -501,8 +495,8 @@ soup_cookie_handler_all_cookies (SoupCookieHandler *handler)
 }
 
 /**
- * soup_cookie_handler_delete_cookie:
- * @handler: a #SoupCookieHandler
+ * cookie_handler_delete_cookie:
+ * @handler: a #CookieHandler
  * @cookie: a #SoupCookie
  *
  * Deletes @cookie from @handler, emitting the 'changed' signal.
@@ -510,17 +504,17 @@ soup_cookie_handler_all_cookies (SoupCookieHandler *handler)
  * Since: 2.24
  **/
 void
-soup_cookie_handler_delete_cookie (SoupCookieHandler *handler,
+cookie_handler_delete_cookie (CookieHandler *handler,
 			       SoupCookie    *cookie)
 {
-	SoupCookieHandlerPrivate *priv;
+	CookieHandlerPrivate *priv;
 	GSList *cookies, *p;
 	char *domain;
 
 	g_return_if_fail (SOUP_IS_COOKIE_HANDLER (handler));
 	g_return_if_fail (cookie != NULL);
 
-	priv = SOUP_COOKIE_HANDLER_GET_PRIVATE (handler);
+	priv = COOKIE_HANDLER_GET_PRIVATE (handler);
 
 	domain = g_strdup (cookie->domain);
 
@@ -535,7 +529,7 @@ soup_cookie_handler_delete_cookie (SoupCookieHandler *handler,
 			g_hash_table_insert (priv->domains,
 					     domain,
 					     cookies);
-			soup_cookie_handler_changed (handler, c, NULL);
+			cookie_handler_changed (handler, c, NULL);
 			soup_cookie_free (c);
 			return;
 		}
