@@ -247,28 +247,23 @@ char *
 cookie_handler_get_cookies (CookieHandler *handler, SoupURI *uri, gboolean for_http) {
     (void) for_http;
     CookieHandlerPrivate *priv;
-    //GSList *cookies, *domain_cookies;
-    //char *domain, *cur, *next_domain, *result;
     char *result;
-    //GSList *new_head, *cookies_to_remove = NULL, *p;
 
     g_return_val_if_fail (SOUP_IS_COOKIE_HANDLER (handler), NULL);
     priv = COOKIE_HANDLER_GET_PRIVATE (handler);
 
-    // NEW
-
     GString *s = g_string_new ("");
     g_string_printf(s, "GET '%s' '%s'", uri->host, uri->path);
-
+    //TODO:
     //g_string_printf(s, "GET '%s' '%s' '%s'", uri->host, uri->path, soup_uri_to_string(uri,FALSE));
-    run_handler(uzbl.behave.cookie_handler, s->str);
- 
-    result = NULL;
+    run_handler(priv->handler, s->str);
+
     if(uzbl.comm.sync_stdout && strcmp (uzbl.comm.sync_stdout, "") != 0) {
         char *p = strchr(uzbl.comm.sync_stdout, '\n' );
         if ( p != NULL ) *p = '\0';
-       result = uzbl.comm.sync_stdout;
-    }
+        result = (char*) strdup(uzbl.comm.sync_stdout);
+    } else
+        result = NULL;
     if (uzbl.comm.sync_stdout)
         uzbl.comm.sync_stdout = strfree(uzbl.comm.sync_stdout);
 
