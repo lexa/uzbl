@@ -18,24 +18,24 @@ G_BEGIN_DECLS
 #define COOKIE_HANDLER_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), SOUP_TYPE_COOKIE_HANDLER, CookieHandlerClass))
 
 typedef struct {
-	GObject parent;
+    GObject parent;
 
 } CookieHandler;
 
 typedef struct {
-	GObjectClass parent_class;
+    GObjectClass parent_class;
 
-	void (*save)    (CookieHandler *handler);
+    void (*save)    (CookieHandler *handler);
 
-	/* signals */
-	void (*changed) (CookieHandler *handler,
-			 SoupCookie    *old_cookie,
-			 SoupCookie    *new_cookie);
+    /* signals */
+    void (*changed) (CookieHandler *handler,
+                     SoupCookie    *old_cookie,
+                     SoupCookie    *new_cookie);
 
-	/* Padding for future expansion */
-	void (*_libsoup_reserved1) (void);
-	void (*_libsoup_reserved2) (void);
-	void (*_libsoup_reserved3) (void);
+    /* Padding for future expansion */
+    void (*_libsoup_reserved1) (void);
+    void (*_libsoup_reserved2) (void);
+    void (*_libsoup_reserved3) (void);
 } CookieHandlerClass;
 
 #define COOKIE_HANDLER_HANDLER "handler"
@@ -45,16 +45,16 @@ GType          cookie_handler_get_type      (void);
 CookieHandler *cookie_handler_new           (const char *handler);
 
 char          *cookie_handler_get_cookies   (CookieHandler *handler,
-					      SoupURI       *uri,
-					      gboolean       for_http);
+                                             SoupURI       *uri,
+                                             gboolean       for_http);
 void           cookie_handler_set_cookie    (CookieHandler *handler,
-					      SoupURI       *uri,
-					      const char    *cookie);
+                                             SoupURI       *uri,
+                                             const char    *cookie);
 
 void           cookie_handler_add_cookie    (CookieHandler *handler,
-					      SoupCookie    *cookie);
+                                             SoupCookie    *cookie);
 void           cookie_handler_delete_cookie (CookieHandler *handler,
-					      SoupCookie    *cookie);
+                                             SoupCookie    *cookie);
 
 GSList        *cookie_handler_all_cookies   (CookieHandler *handler);
 
