@@ -646,7 +646,8 @@ static struct {char *name; Command command[2];} cmdlist[] =
     { "keycmd_nl",          {keycmd_nl, NOSPLIT}           },
     { "keycmd_bs",          {keycmd_bs, 0}                 },
     { "chain",              {chain, 0}                     },
-    { "print",              {print, NOSPLIT}               }
+    { "print",              {print, NOSPLIT}               },
+    { "source",             {source, NOSPLIT}              }
 };
 
 static void
@@ -705,6 +706,16 @@ print(WebKitWebView *page, GArray *argv) {
 
     buf = expand_vars(argv_idx(argv, 0));
     puts(buf);
+    g_free(buf);
+}
+
+static void
+source(WebKitWebView *page, GArray *argv) {
+    (void) page;
+    gchar* buf;
+
+    buf = expand_vars(argv_idx(argv, 0));
+    source_config(buf);
     g_free(buf);
 }
 
@@ -1118,6 +1129,22 @@ expand_template(const char *template, gboolean escape_markup) {
      return g_string_free(ret, FALSE);
 }
 /* --End Statusbar functions-- */
+
+static void
+source_config(gchar *config_file) {
+    if (uzbl.state.verbose)
+        printf("Reading config from: %s\n", config_file);
+    GArray* lines = read_file_by_line (config_file);
+    int i = 0;
+    gchar* line;
+
+    while ((line = g_array_index(lines, gchar*, i))) {
+        parse_cmd_line (line);
+        i ++;
+        g_free (line);
+    }
+    g_array_free (lines, TRUE);
+}
 
 static void
 sharg_append(GArray *a, const gchar *str) {
@@ -2268,16 +2295,7 @@ settings_init () {
     }
 
     if (s->config_file) {
-        GArray* lines = read_file_by_line (s->config_file);
-        int i = 0;
-        gchar* line;
-
-        while ((line = g_array_index(lines, gchar*, i))) {
-            parse_cmd_line (line);
-            i ++;
-            g_free (line);
-        }
-        g_array_free (lines, TRUE);
+        source_config(s->config_file);
     } else {
         if (uzbl.state.verbose)
             printf ("No configuration file loaded.\n");

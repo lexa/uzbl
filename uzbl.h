@@ -249,6 +249,12 @@ set_var_value(gchar *name, gchar *val);
 static void
 print(WebKitWebView *page, GArray *argv);
 
+static void
+source(WebKitWebView *page, GArray *argv);
+
+static void
+source_config(gchar *config_file);
+
 static gboolean
 new_window_cb (WebKitWebView *web_view, WebKitWebFrame *frame, WebKitNetworkRequest *request, WebKitWebNavigationAction *navigation_action, WebKitWebPolicyDecision *policy_decision, gpointer user_data);
 
