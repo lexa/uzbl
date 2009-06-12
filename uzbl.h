@@ -139,6 +139,7 @@ typedef struct {
     gchar*   socket_dir;
     gchar*   download_handler;
     gchar*   cookie_handler;
+    gchar*   policy_handler;
     gboolean always_insert_mode;
     gboolean show_status;
     gboolean insert_mode;
@@ -474,6 +475,9 @@ set_icon();
 
 static void
 cmd_cookie_handler();
+
+static void
+cmd_policy_handler();
 
 static void
 move_statusbar();
