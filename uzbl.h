@@ -67,6 +67,7 @@ typedef struct {
 /* gui elements */
 typedef struct {
     GtkWidget*     main_window;
+    GtkPlug*       plug;
     GtkWidget*     scrolled_win;
     GtkWidget*     vbox;
     GtkWidget*     mainbar;
@@ -77,6 +78,7 @@ typedef struct {
     GtkAdjustment* bar_h; // and scrolling position
     WebKitWebView* web_view;
     gchar*         main_title;
+    gchar*         icon;
 
     /* WebInspector */
     GtkWidget *inspector_window;
@@ -101,7 +103,8 @@ typedef struct {
 typedef struct {
     gchar    *uri;
     gchar    *config_file;
-    char    *instance_name;
+    int      socket_id;
+    char     *instance_name;
     gchar    *selected_url;
     gchar    *executable_path;
     GString* keycmd;
@@ -137,6 +140,7 @@ typedef struct {
     gchar*   download_handler;
     gchar*   cookie_handler;
     gchar*   cookie_file;
+    gchar*   policy_handler;
     gboolean always_insert_mode;
     gboolean show_status;
     gboolean insert_mode;
@@ -258,6 +262,9 @@ create_web_view_cb (WebKitWebView  *web_view, WebKitWebFrame *frame, gpointer us
 
 static gboolean
 download_cb (WebKitWebView *web_view, GObject *download, gpointer user_data);
+
+static void
+toggle_zoom_type (WebKitWebView* page, GArray *argv);
 
 static void
 toggle_status_cb (WebKitWebView* page, GArray *argv);
@@ -386,6 +393,9 @@ create_mainbar ();
 static
 GtkWidget* create_window ();
 
+static
+GtkPlug* create_plug ();
+
 static void
 run_handler (const gchar *act, const gchar *args);
 
@@ -462,7 +472,13 @@ static void
 set_proxy_url();
 
 static void
+set_icon();
+
+static void
 cmd_cookie_handler();
+
+static void
+cmd_policy_handler();
 
 static void
 move_statusbar();

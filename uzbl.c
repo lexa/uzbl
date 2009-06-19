@@ -73,6 +73,8 @@ GOptionEntry entries[] =
         "Name of the current instance (defaults to Xorg window id)", "NAME" },
     { "config",  'c', 0, G_OPTION_ARG_STRING, &uzbl.state.config_file,   
         "Config file (this is pretty much equivalent to uzbl < FILE )", "FILE" },
+    { "socket",  's', 0, G_OPTION_ARG_INT, &uzbl.state.socket_id,   
+        "Socket ID", "SOCKET" },
     { NULL,      0, 0, 0, NULL, NULL, NULL }
 };
 
@@ -114,6 +116,7 @@ const struct {
     { "command_indicator",   PTR(uzbl.behave.cmd_indicator,       STR,  1,   update_title)},
     { "title_format_long",   PTR(uzbl.behave.title_format_long,   STR,  1,   update_title)},
     { "title_format_short",  PTR(uzbl.behave.title_format_short,  STR,  1,   update_title)},
+    { "icon",                PTR(uzbl.gui.icon,                   STR,  1,   set_icon)},
     { "insert_mode",         PTR(uzbl.behave.insert_mode,         INT,  1,   NULL)},
     { "always_insert_mode",  PTR(uzbl.behave.always_insert_mode,  INT,  1,   cmd_always_insert_mode)},
     { "reset_command_mode",  PTR(uzbl.behave.reset_command_mode,  INT,  1,   NULL)},
@@ -125,6 +128,7 @@ const struct {
     { "download_handler",    PTR(uzbl.behave.download_handler,    STR,  1,   NULL)},
     { "cookie_handler",      PTR(uzbl.behave.cookie_handler,      STR,  1,   cmd_cookie_handler)},
     { "cookie_file",         PTR(uzbl.behave.cookie_file,         STR,  1,   NULL)},
+    { "policy_handler",      PTR(uzbl.behave.policy_handler,      STR,  1,   cmd_policy_handler)},
     { "fifo_dir",            PTR(uzbl.behave.fifo_dir,            STR,  1,   cmd_fifo_dir)},
     { "socket_dir",          PTR(uzbl.behave.socket_dir,          STR,  1,   cmd_socket_dir)},
     { "http_debug",          PTR(uzbl.behave.http_debug,          INT,  1,   cmd_http_debug)},
@@ -389,8 +393,25 @@ new_window_cb (WebKitWebView *web_view, WebKitWebFrame *frame, WebKitNetworkRequ
     const gchar* uri = webkit_network_request_get_uri (request);
     if (uzbl.state.verbose)
         printf("New window requested -> %s \n", uri);
-    new_window_load_uri(uri);
-    return (FALSE);
+    if (!uzbl.behave.policy_handler)
+        return FALSE;
+
+    GString *s = g_string_new ("");
+    g_string_printf(s, "new_window '%s'", uri);
+    run_handler(uzbl.behave.policy_handler, s->str);
+    if(uzbl.comm.sync_stdout && strcmp (uzbl.comm.sync_stdout, "") != 0) {
+        char *p = strchr(uzbl.comm.sync_stdout, '\n' );
+        if ( p != NULL ) *p = '\0';
+        if (strcmp (uzbl.comm.sync_stdout, "ALLOW") == 0)
+            /* This then gets handled by create_web_view_cb */
+            webkit_web_policy_decision_use(policy_decision);
+        else {
+            webkit_web_policy_decision_ignore(policy_decision);
+            webkit_web_view_load_uri (web_view, uri);
+        }
+    }
+
+    return TRUE;
 }
 
 static gboolean
@@ -484,6 +505,14 @@ cmd_set_status() {
         gtk_widget_show(uzbl.gui.mainbar);
     }
     update_title();
+}
+
+static void
+toggle_zoom_type (WebKitWebView* page, GArray *argv) {
+    (void)page;
+    (void)argv;
+
+    webkit_web_view_set_full_content_zoom (page, !webkit_web_view_get_full_content_zoom (page));
 }
 
 static void
@@ -614,6 +643,7 @@ static struct {char *name; Command command[2];} cmdlist[] =
     { "stop",               {view_stop_loading, 0},        },
     { "zoom_in",            {view_zoom_in, 0},             }, //Can crash (when max zoom reached?).
     { "zoom_out",           {view_zoom_out, 0},            },
+    { "toggle_zoom_type",   {toggle_zoom_type, 0},         },
     { "uri",                {load_uri, NOSPLIT}            },
     { "js",                 {run_js, NOSPLIT}              },
     { "script",             {run_external_js, 0}           },
@@ -1313,6 +1343,17 @@ set_proxy_url() {
 }
 
 static void
+set_icon() {
+    if(file_exists(uzbl.gui.icon)) {
+        if (uzbl.gui.main_window)
+            gtk_window_set_icon_from_file (GTK_WINDOW (uzbl.gui.main_window), uzbl.gui.icon, NULL);
+    } else {
+        g_printerr ("Icon \"%s\" not found. ignoring.\n", uzbl.gui.icon);
+    }
+    g_free (uzbl.gui.icon);
+}
+
+static void
 cmd_load_uri() {
     GArray *a = g_array_new (TRUE, FALSE, sizeof(gchar*));
     g_array_append_val (a, uzbl.state.uri);
@@ -1464,6 +1505,19 @@ cmd_cookie_handler() {
         (g_strcmp0(split[0], "spawn") == 0)) {
         g_free (uzbl.behave.cookie_handler);
         uzbl.behave.cookie_handler =
+            g_strdup_printf("sync_%s %s", split[0], split[1]);
+    }
+    g_strfreev (split);
+}
+
+static void
+cmd_policy_handler() {
+    gchar **split = g_strsplit(uzbl.behave.policy_handler, " ", 2);
+    /* pitfall: doesn't handle chain actions; must the sync_ action manually */
+    if ((g_strcmp0(split[0], "sh") == 0) ||
+        (g_strcmp0(split[0], "spawn") == 0)) {
+        g_free (uzbl.behave.policy_handler);
+        uzbl.behave.policy_handler =
             g_strdup_printf("sync_%s %s", split[0], split[1]);
     }
     g_strfreev (split);
@@ -1855,7 +1909,8 @@ update_title (void) {
     if (b->show_status) {
         if (b->title_format_short) {
             parsed = expand_template(b->title_format_short, FALSE);
-            gtk_window_set_title (GTK_WINDOW(uzbl.gui.main_window), parsed);
+            if (uzbl.gui.main_window)
+                gtk_window_set_title (GTK_WINDOW(uzbl.gui.main_window), parsed);
             g_free(parsed);
         }
         if (b->status_format) {
@@ -1867,12 +1922,14 @@ update_title (void) {
             GdkColor color;
             gdk_color_parse (b->status_background, &color);
             //labels and hboxes do not draw their own background.  applying this on the window is ok as we the statusbar is the only affected widget.  (if not, we could also use GtkEventBox)
-            gtk_widget_modify_bg (uzbl.gui.main_window, GTK_STATE_NORMAL, &color);
+            if (uzbl.gui.main_window)
+                gtk_widget_modify_bg (uzbl.gui.main_window, GTK_STATE_NORMAL, &color);
         }
     } else {
         if (b->title_format_long) {
             parsed = expand_template(b->title_format_long, FALSE);
-            gtk_window_set_title (GTK_WINDOW(uzbl.gui.main_window), parsed);
+            if (uzbl.gui.main_window)
+                gtk_window_set_title (GTK_WINDOW(uzbl.gui.main_window), parsed);
             g_free(parsed);
         }
     }
@@ -2047,6 +2104,16 @@ GtkWidget* create_window () {
     return window;
 }
 
+static
+GtkPlug* create_plug () {
+    GtkPlug* plug = GTK_PLUG (gtk_plug_new (uzbl.state.socket_id));
+    g_signal_connect (G_OBJECT (plug), "destroy", G_CALLBACK (destroy_cb), NULL);
+    g_signal_connect (G_OBJECT (plug), "key-press-event", G_CALLBACK (key_press_cb), NULL);
+
+    return plug;
+}
+
+
 static gchar**
 inject_handler_args(const gchar *actname, const gchar *origargs, const gchar *newargs) {
     /*
@@ -2171,8 +2238,7 @@ static gchar*
 get_xdg_var (XDG_Var xdg) {
     const gchar* actual_value = getenv (xdg.environmental);
     const gchar* home         = getenv ("HOME");
-
-    gchar* return_value = str_replace ("~", home, actual_value);
+    gchar* return_value;
 
     if (! actual_value || strcmp (actual_value, "") == 0) {
         if (xdg.default_value) {
@@ -2180,7 +2246,10 @@ get_xdg_var (XDG_Var xdg) {
         } else {
             return_value = NULL;
         }
+    } else {
+        return_value = str_replace("~", home, actual_value);
     }
+
     return return_value;
 }
 
@@ -2351,7 +2420,7 @@ inspector_attach_window_cb (WebKitWebInspector* inspector){
 }
 
 static gboolean
-inspector_dettach_window_cb (WebKitWebInspector* inspector){
+inspector_detach_window_cb (WebKitWebInspector* inspector){
     (void) inspector;
     return FALSE;
 }
@@ -2379,8 +2448,8 @@ set_up_inspector() {
     g_signal_connect (G_OBJECT (g->inspector), "show-window", G_CALLBACK (inspector_show_window_cb), NULL);
     g_signal_connect (G_OBJECT (g->inspector), "close-window", G_CALLBACK (inspector_close_window_cb), NULL);
     g_signal_connect (G_OBJECT (g->inspector), "attach-window", G_CALLBACK (inspector_attach_window_cb), NULL);
-    g_signal_connect (G_OBJECT (g->inspector), "dettach-window", G_CALLBACK (inspector_dettach_window_cb), NULL);
-    g_signal_connect (G_OBJECT (g->inspector), "destroy", G_CALLBACK (inspector_inspector_destroyed_cb), NULL);
+    g_signal_connect (G_OBJECT (g->inspector), "detach-window", G_CALLBACK (inspector_detach_window_cb), NULL);
+    g_signal_connect (G_OBJECT (g->inspector), "finished", G_CALLBACK (inspector_inspector_destroyed_cb), NULL);
 
     g_signal_connect (G_OBJECT (g->inspector), "notify::inspected-uri", G_CALLBACK (inspector_uri_changed_cb), NULL);
 }
@@ -2477,17 +2546,25 @@ main (int argc, char* argv[]) {
     gtk_box_pack_start (GTK_BOX (uzbl.gui.vbox), uzbl.gui.scrolled_win, TRUE, TRUE, 0);
     gtk_box_pack_start (GTK_BOX (uzbl.gui.vbox), uzbl.gui.mainbar, FALSE, TRUE, 0);
 
-    uzbl.gui.main_window = create_window ();
-    gtk_container_add (GTK_CONTAINER (uzbl.gui.main_window), uzbl.gui.vbox);
-
+    if (uzbl.state.socket_id) {
+        uzbl.gui.plug = create_plug ();
+        gtk_container_add (GTK_CONTAINER (uzbl.gui.plug), uzbl.gui.vbox);
+        gtk_widget_show_all (GTK_WIDGET (uzbl.gui.plug));
+    } else {
+        uzbl.gui.main_window = create_window ();
+        gtk_container_add (GTK_CONTAINER (uzbl.gui.main_window), uzbl.gui.vbox);
+        gtk_widget_show_all (uzbl.gui.main_window);
+        uzbl.xwin = GDK_WINDOW_XID (GTK_WIDGET (uzbl.gui.main_window)->window);
+    }
 
     gtk_widget_grab_focus (GTK_WIDGET (uzbl.gui.web_view));
-    gtk_widget_show_all (uzbl.gui.main_window);
-    uzbl.xwin = GDK_WINDOW_XID (GTK_WIDGET (uzbl.gui.main_window)->window);
 
     if (uzbl.state.verbose) {
         printf("Uzbl start location: %s\n", argv[0]);
-        printf("window_id %i\n",(int) uzbl.xwin);
+        if (uzbl.state.socket_id)
+            printf("plug_id %i\n", gtk_plug_get_id(uzbl.gui.plug));
+        else
+            printf("window_id %i\n",(int) uzbl.xwin);
         printf("pid %i\n", getpid ());
         printf("name: %s\n", uzbl.state.instance_name);
     }
