@@ -464,12 +464,24 @@ download_cb (WebKitWebView *web_view, GObject *download, gpointer user_data) {
 /* scroll a bar in a given direction */
 static void
 scroll (GtkAdjustment* bar, GArray *argv) {
-    gdouble amount;
     gchar *end;
+    gdouble max_value;
 
-    amount = g_ascii_strtod(g_array_index(argv, gchar*, 0), &end);
-    if (*end == '%') amount = gtk_adjustment_get_page_size(bar) * amount * 0.01;
-    gtk_adjustment_set_value (bar, gtk_adjustment_get_value(bar)+amount);
+    gdouble page_size = gtk_adjustment_get_page_size(bar);
+    gdouble value = gtk_adjustment_get_value(bar);
+    gdouble amount = g_ascii_strtod(g_array_index(argv, gchar*, 0), &end);
+
+    if (*end == '%')
+        value += page_size * amount * 0.01;
+    else
+        value += amount;
+
+    max_value = gtk_adjustment_get_upper(bar) - page_size;
+
+    if (value > max_value)
+        value = max_value; /* don't scroll past the end of the page */
+
+    gtk_adjustment_set_value (bar, value);
 }
 
 static void
@@ -902,9 +914,12 @@ keycmd_nl (WebKitWebView *page, GArray *argv) {
 
 static void
 keycmd_bs (WebKitWebView *page, GArray *argv) {
+    gchar *prev;
     (void)page;
     (void)argv;
-    g_string_truncate(uzbl.state.keycmd, uzbl.state.keycmd->len - 1);
+    prev = g_utf8_find_prev_char(uzbl.state.keycmd->str, uzbl.state.keycmd->str + uzbl.state.keycmd->len);
+    if (prev)
+      g_string_truncate(uzbl.state.keycmd, prev - uzbl.state.keycmd->str);
     update_title();
 }
 
@@ -1679,9 +1694,9 @@ parse_cmd_line(const char *ctl_line) {
 
 static gchar*
 build_stream_name(int type, const gchar* dir) {
-    char *xwin_str;
+    char *xwin_str = NULL;
     State *s = &uzbl.state;
-    gchar *str;
+    gchar *str = NULL;
 
     xwin_str = itos((int)uzbl.xwin);
     if (type == FIFO) {
