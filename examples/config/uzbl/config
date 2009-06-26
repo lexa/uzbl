@@ -10,6 +10,8 @@
 set history_handler  = spawn $XDG_DATA_HOME/uzbl/scripts/history.sh
 set download_handler = spawn $XDG_DATA_HOME/uzbl/scripts/download.sh
 set cookie_handler   = spawn $XDG_DATA_HOME/uzbl/scripts/cookies.py
+# This handler is given two additional arguments - the action requested (only 'new_window' at the moment), and the URI to be opened - if ALLOW is recieved on stdin, open a new window, else open it in the same window
+set policy_handler = sh 'echo ALLOW'
 
 # You can bind whatever things (spawn <foo>, script <bar>,..) to some events TODO: make events system more generic
 set load_start_handler = set status_message = <span foreground="khaki">wait</span>
