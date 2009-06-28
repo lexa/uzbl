@@ -2,11 +2,6 @@
 
 import cookielib, sys, os, urllib2
 
-class DontClearExpiredCookiesCookieJar(cookielib.MozillaCookieJar):
-    _now = None
-    def clear_expired_cookies(self):
-        pass
-
 class FakeRequest:
     def __init__(self, argv):
         self.argv = argv
@@ -70,9 +65,9 @@ if __name__ == '__main__':
         file = os.path.join(os.environ['XDG_DATA_HOME'],'uzbl/cookies.txt')
     else:
         file = os.path.join(os.environ['HOME'],'.local/share/uzbl/cookies.txt')
-    jar = DontClearExpiredCookiesCookieJar(file)
+    jar = cookiejar.MozillaCookieJar(file)
     try:
-        jar.load()
+        jar.load(ignore_discard=True)
     except:
         pass
 
