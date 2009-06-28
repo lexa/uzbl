@@ -127,6 +127,7 @@ const struct {
     { "history_handler",     PTR(uzbl.behave.history_handler,     STR,  1,   NULL)},
     { "download_handler",    PTR(uzbl.behave.download_handler,    STR,  1,   NULL)},
     { "cookie_handler",      PTR(uzbl.behave.cookie_handler,      STR,  1,   cmd_cookie_handler)},
+    { "new_window",          PTR(uzbl.behave.new_window,          STR,  1,   cmd_new_window)},
     { "fifo_dir",            PTR(uzbl.behave.fifo_dir,            STR,  1,   cmd_fifo_dir)},
     { "socket_dir",          PTR(uzbl.behave.socket_dir,          STR,  1,   cmd_socket_dir)},
     { "http_debug",          PTR(uzbl.behave.http_debug,          INT,  1,   cmd_http_debug)},
@@ -488,8 +489,8 @@ new_window_cb (WebKitWebView *web_view, WebKitWebFrame *frame, WebKitNetworkRequ
     const gchar* uri = webkit_network_request_get_uri (request);
     if (uzbl.state.verbose)
         printf("New window requested -> %s \n", uri);
-    new_window_load_uri(uri);
-    return (FALSE);
+    webkit_web_policy_decision_use(policy_decision);
+    return (TRUE);
 }
 
 static gboolean
@@ -1045,6 +1046,12 @@ dehilight (WebKitWebView *page, GArray *argv, GString *result) {
 
 static void
 new_window_load_uri (const gchar * uri) {
+    if (uzbl.behave.new_window) {
+        GString *s = g_string_new ("");
+        g_string_printf(s, "'%s'", uri);
+        run_handler(uzbl.behave.new_window, s->str);
+        return;
+    }
     GString* to_execute = g_string_new ("");
     g_string_append_printf (to_execute, "%s --uri '%s'", uzbl.state.executable_path, uri);
     int i;
@@ -1715,6 +1722,19 @@ cmd_cookie_handler() {
         (g_strcmp0(split[0], "spawn") == 0)) {
         g_free (uzbl.behave.cookie_handler);
         uzbl.behave.cookie_handler =
+            g_strdup_printf("sync_%s %s", split[0], split[1]);
+    }
+    g_strfreev (split);
+}
+
+static void
+cmd_new_window() {
+    gchar **split = g_strsplit(uzbl.behave.new_window, " ", 2);
+    /* pitfall: doesn't handle chain actions; must the sync_ action manually */
+    if ((g_strcmp0(split[0], "sh") == 0) ||
+        (g_strcmp0(split[0], "spawn") == 0)) {
+        g_free (uzbl.behave.new_window);
+        uzbl.behave.new_window =
             g_strdup_printf("sync_%s %s", split[0], split[1]);
     }
     g_strfreev (split);
