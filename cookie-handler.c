@@ -397,9 +397,14 @@ request_started (SoupSessionFeature *feature, SoupSession *session, SoupMessage 
     if (cookies) {
         soup_message_headers_replace (msg->request_headers,
                                       "Cookie", cookies);
+        if (uzbl.state.verbose)
+            printf("Cookies found: %s\n", cookies);
         g_free (cookies);
-    } else
+    } else {
         soup_message_headers_remove (msg->request_headers, "Cookie");
+        if (uzbl.state.verbose)
+            printf("No cookies found\n");
+    }
 }
 
 static void
