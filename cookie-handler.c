@@ -271,109 +271,22 @@ cookie_handler_get_cookies (CookieHandler *handler, SoupURI *uri, gboolean for_h
     return result;
 }
 
-/**
- * cookie_handler_add_cookie:
- * @handler: a #CookieHandler
- * @cookie: a #SoupCookie
- *
- * Adds @cookie to @handler, emitting the 'changed' signal if we are modifying
- * an existing cookie or adding a valid new cookie ('valid' means
- * that the cookie's expire date is not in the past).
- *
- * @cookie will be 'stolen' by the handler, so don't free it afterwards.
- *
- * Since: 2.24
- **/
-void
-cookie_handler_add_cookie (CookieHandler *handler, SoupCookie *cookie) {
-    CookieHandlerPrivate *priv;
-    GSList *old_cookies, *oc, *prev = NULL;
-    SoupCookie *old_cookie;
-
-    g_return_if_fail (SOUP_IS_COOKIE_HANDLER (handler));
-    g_return_if_fail (cookie != NULL);
-
-    priv = COOKIE_HANDLER_GET_PRIVATE (handler);
-    old_cookies = g_hash_table_lookup (priv->domains, cookie->domain);
-    for (oc = old_cookies; oc; oc = oc->next) {
-        old_cookie = oc->data;
-        if (!strcmp (cookie->name, old_cookie->name) &&
-            !g_strcmp0 (cookie->path, old_cookie->path)) {
-            if (cookie->expires && soup_date_is_past (cookie->expires)) {
-                /* The new cookie has an expired date,
-                 * this is the way the the server has
-                 * of telling us that we have to
-                 * remove the cookie.
-                 */
-                old_cookies = g_slist_delete_link (old_cookies, oc);
-                g_hash_table_insert (priv->domains,
-                                     g_strdup (cookie->domain),
-                                     old_cookies);
-                cookie_handler_changed (handler, old_cookie, NULL);
-                soup_cookie_free (old_cookie);
-                soup_cookie_free (cookie);
-            } else {
-                oc->data = cookie;
-                cookie_handler_changed (handler, old_cookie, cookie);
-                soup_cookie_free (old_cookie);
-            }
-
-            return;
-        }
-        prev = oc;
-    }
-
-    /* The new cookie is... a new cookie */
-    if (cookie->expires && soup_date_is_past (cookie->expires)) {
-        soup_cookie_free (cookie);
-        return;
-    }
-
-    if (prev)
-        prev = g_slist_append (prev, cookie);
-    else {
-        old_cookies = g_slist_append (NULL, cookie);
-        g_hash_table_insert (priv->domains, g_strdup (cookie->domain),
-                             old_cookies);
-    }
-
-    cookie_handler_changed (handler, NULL, cookie);
-}
-
-/**
- * cookie_handler_set_cookie:
- * @handler: a #CookieHandler
- * @uri: the URI setting the cookie
- * @cookie: the stringified cookie to set
- *
- * Adds @cookie to @handler, exactly as though it had appeared in a
- * Set-Cookie header returned from a request to @uri.
- *
- * Since: 2.24
- **/
-void
-cookie_handler_set_cookie (CookieHandler *handler, SoupURI *uri, const char *cookie) {
-    SoupCookie *soup_cookie;
-
-    g_return_if_fail (SOUP_IS_COOKIE_HANDLER (handler));
-    g_return_if_fail (cookie != NULL);
-
-    soup_cookie = soup_cookie_parse (cookie, uri);
-    if (soup_cookie) {
-        /* will steal or free soup_cookie */
-        cookie_handler_add_cookie (handler, soup_cookie);
-    }
-}
 
 static void
 process_set_cookie_header (SoupMessage *msg, gpointer user_data) {
-    CookieHandler *handler = user_data;
-    GSList *new_cookies, *nc;
-
-    new_cookies = soup_cookies_from_response (msg);
-    for (nc = new_cookies; nc; nc = nc->next)
-        cookie_handler_add_cookie (handler, nc->data);
-    g_slist_free (new_cookies);
+    (void) user_data;
+    char *cookie;
+    GSList *ck;
+    for (ck = soup_cookies_from_response(msg); ck; ck = ck->next){
+        cookie = soup_cookie_to_set_cookie_header(ck->data);
+        SoupURI * soup_uri = soup_message_get_uri(msg);
+        GString *s = g_string_new ("");
+        g_string_printf(s, "PUT '%s' '%s' '%s'", soup_uri->host, soup_uri->path, cookie);
+        run_handler(uzbl.behave.cookie_handler, s->str);
+        g_free (cookie);
+        g_string_free(s, TRUE);
+    }
+    g_slist_free(ck);
 }
 
 static void
