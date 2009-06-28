@@ -127,7 +127,6 @@ const struct {
     { "history_handler",     PTR(uzbl.behave.history_handler,     STR,  1,   NULL)},
     { "download_handler",    PTR(uzbl.behave.download_handler,    STR,  1,   NULL)},
     { "cookie_handler",      PTR(uzbl.behave.cookie_handler,      STR,  1,   cmd_cookie_handler)},
-    { "policy_handler",      PTR(uzbl.behave.policy_handler,      STR,  1,   cmd_policy_handler)},
     { "fifo_dir",            PTR(uzbl.behave.fifo_dir,            STR,  1,   cmd_fifo_dir)},
     { "socket_dir",          PTR(uzbl.behave.socket_dir,          STR,  1,   cmd_socket_dir)},
     { "http_debug",          PTR(uzbl.behave.http_debug,          INT,  1,   cmd_http_debug)},
@@ -489,25 +488,8 @@ new_window_cb (WebKitWebView *web_view, WebKitWebFrame *frame, WebKitNetworkRequ
     const gchar* uri = webkit_network_request_get_uri (request);
     if (uzbl.state.verbose)
         printf("New window requested -> %s \n", uri);
-    if (!uzbl.behave.policy_handler)
-        return FALSE;
-
-    GString *s = g_string_new ("");
-    g_string_printf(s, "new_window '%s'", uri);
-    run_handler(uzbl.behave.policy_handler, s->str);
-    if(uzbl.comm.sync_stdout && strcmp (uzbl.comm.sync_stdout, "") != 0) {
-        char *p = strchr(uzbl.comm.sync_stdout, '\n' );
-        if ( p != NULL ) *p = '\0';
-        if (strcmp (uzbl.comm.sync_stdout, "ALLOW") == 0)
-            /* This then gets handled by create_web_view_cb */
-            webkit_web_policy_decision_use(policy_decision);
-        else {
-            webkit_web_policy_decision_ignore(policy_decision);
-            webkit_web_view_load_uri (web_view, uri);
-        }
-    }
-
-    return TRUE;
+    new_window_load_uri(uri);
+    return (FALSE);
 }
 
 static gboolean
@@ -1733,19 +1715,6 @@ cmd_cookie_handler() {
         (g_strcmp0(split[0], "spawn") == 0)) {
         g_free (uzbl.behave.cookie_handler);
         uzbl.behave.cookie_handler =
-            g_strdup_printf("sync_%s %s", split[0], split[1]);
-    }
-    g_strfreev (split);
-}
-
-static void
-cmd_policy_handler() {
-    gchar **split = g_strsplit(uzbl.behave.policy_handler, " ", 2);
-    /* pitfall: doesn't handle chain actions; must the sync_ action manually */
-    if ((g_strcmp0(split[0], "sh") == 0) ||
-        (g_strcmp0(split[0], "spawn") == 0)) {
-        g_free (uzbl.behave.policy_handler);
-        uzbl.behave.policy_handler =
             g_strdup_printf("sync_%s %s", split[0], split[1]);
     }
     g_strfreev (split);
