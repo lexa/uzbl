@@ -2,6 +2,11 @@
 
 import cookielib, sys, os, urllib2
 
+class DontClearExpiredCookiesCookieJar(cookielib.MozillaCookieJar):
+    _now = None
+    def clear_expired_cookies(self):
+        pass
+
 class FakeRequest:
     def __init__(self, argv):
         self.argv = argv
@@ -62,11 +67,10 @@ class FakeResponse:
 
 if __name__ == '__main__':
     if 'XDG_DATA_HOME' in os.environ.keys() and os.environ['XDG_DATA_HOME']:
-        jar = cookielib.MozillaCookieJar(
-          os.path.join(os.environ['XDG_DATA_HOME'],'uzbl/cookies.txt'))
+        file = os.path.join(os.environ['XDG_DATA_HOME'],'uzbl/cookies.txt')
     else:
-        jar = cookielib.MozillaCookieJar(
-          os.path.join(os.environ['HOME'],'.local/share/uzbl/cookies.txt'))
+        file = os.path.join(os.environ['HOME'],'.local/share/uzbl/cookies.txt')
+    jar = DontClearExpiredCookiesCookieJar(file)
     try:
         jar.load()
     except:
