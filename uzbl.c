@@ -488,6 +488,7 @@ new_window_cb (WebKitWebView *web_view, WebKitWebFrame *frame, WebKitNetworkRequ
     const gchar* uri = webkit_network_request_get_uri (request);
     if (uzbl.state.verbose)
         printf("New window requested -> %s \n", uri);
+    uzbl.state.new_window_uri = g_strdup(uri);
     webkit_web_policy_decision_use(policy_decision);
     return TRUE;
 }
@@ -514,10 +515,10 @@ create_web_view_cb (WebKitWebView  *web_view, WebKitWebFrame *frame, gpointer us
     (void) web_view;
     (void) frame;
     (void) user_data;
-    if (uzbl.state.selected_url != NULL) {
+    if (uzbl.state.new_window_uri != NULL) {
         if (uzbl.state.verbose)
-            printf("\nNew web view -> %s\n",uzbl.state.selected_url);
-        new_window_load_uri(uzbl.state.selected_url);
+            printf("\nNew web view -> %s\n",uzbl.state.new_window_uri);
+        new_window_load_uri(uzbl.state.new_window_uri);
     } else {
         if (uzbl.state.verbose)
             printf("New web view -> %s\n","Nothing to open, exiting");

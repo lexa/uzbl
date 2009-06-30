@@ -104,6 +104,7 @@ typedef struct {
     int      socket_id;
     char     *instance_name;
     gchar    *selected_url;
+    gchar    *new_window_uri;
     gchar    *executable_path;
     GString* keycmd;
     gchar*   searchtx;
