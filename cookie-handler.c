@@ -261,7 +261,7 @@ cookie_handler_get_cookies (CookieHandler *handler, SoupURI *uri, gboolean for_h
     if(uzbl.comm.sync_stdout && strcmp (uzbl.comm.sync_stdout, "") != 0) {
         char *p = strchr(uzbl.comm.sync_stdout, '\n' );
         if ( p != NULL ) *p = '\0';
-        result = (char*) strdup(uzbl.comm.sync_stdout);
+        result = (char*) g_strdup(uzbl.comm.sync_stdout);
     } else
         result = NULL;
     if (uzbl.comm.sync_stdout)
