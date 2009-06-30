@@ -51,13 +51,6 @@ void           cookie_handler_set_cookie    (CookieHandler *handler,
                                              SoupURI       *uri,
                                              const char    *cookie);
 
-void           cookie_handler_add_cookie    (CookieHandler *handler,
-                                             SoupCookie    *cookie);
-void           cookie_handler_delete_cookie (CookieHandler *handler,
-                                             SoupCookie    *cookie);
-
-GSList        *cookie_handler_all_cookies   (CookieHandler *handler);
-
 
 G_END_DECLS
 

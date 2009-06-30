@@ -210,16 +210,6 @@ cookie_handler_new (const char *handler) {
                          NULL);
 }
 
-static void
-cookie_handler_changed (CookieHandler *handler, SoupCookie *old, SoupCookie *new) {
-    CookieHandlerPrivate *priv = COOKIE_HANDLER_GET_PRIVATE (handler);
-
-    if (!priv->handler || !priv->constructed)
-        return;
-
-    g_signal_emit (handler, signals[CHANGED], 0, old, new);
-}
-
 /**
  * cookie_handler_get_cookies:
  * @handler: a #CookieHandler
@@ -326,77 +316,4 @@ request_unqueued (SoupSessionFeature *feature, SoupSession *session, SoupMessage
     g_signal_handlers_disconnect_by_func (msg, process_set_cookie_header, feature);
 }
 
-/**
- * cookie_handler_all_cookies:
- * @handler: a #CookieHandler
- *
- * Constructs a #GSList with every cookie inside the @handler.
- * The cookies in the list are a copy of the original, so
- * you have to free them when you are done with them.
- *
- * Return value: a #GSList with all the cookies in the @handler.
- *
- * Since: 2.24
- **/
-GSList *
-cookie_handler_all_cookies (CookieHandler *handler) {
-    CookieHandlerPrivate *priv;
-    GHashTableIter iter;
-    GSList *l = NULL;
-    gpointer key, value;
-
-    g_return_val_if_fail (SOUP_IS_COOKIE_HANDLER (handler), NULL);
-
-    priv = COOKIE_HANDLER_GET_PRIVATE (handler);
-
-    g_hash_table_iter_init (&iter, priv->domains);
-
-    while (g_hash_table_iter_next (&iter, &key, &value)) {
-        GSList *p, *cookies = value;
-        for (p = cookies; p; p = p->next)
-            l = g_slist_prepend (l, soup_cookie_copy (p->data));
-    }
-
-    return l;
-}
-
-/**
- * cookie_handler_delete_cookie:
- * @handler: a #CookieHandler
- * @cookie: a #SoupCookie
- *
- * Deletes @cookie from @handler, emitting the 'changed' signal.
- *
- * Since: 2.24
- **/
-void
-cookie_handler_delete_cookie (CookieHandler *handler, SoupCookie    *cookie) {
-    CookieHandlerPrivate *priv;
-    GSList *cookies, *p;
-    char *domain;
-
-    g_return_if_fail (SOUP_IS_COOKIE_HANDLER (handler));
-    g_return_if_fail (cookie != NULL);
-
-    priv = COOKIE_HANDLER_GET_PRIVATE (handler);
-
-    domain = g_strdup (cookie->domain);
-
-    cookies = g_hash_table_lookup (priv->domains, domain);
-    if (cookies == NULL)
-        return;
-
-    for (p = cookies; p; p = p->next ) {
-        SoupCookie *c = (SoupCookie*)p->data;
-        if (soup_cookie_equal (cookie, c)) {
-            cookies = g_slist_delete_link (cookies, p);
-            g_hash_table_insert (priv->domains,
-                         domain,
-                         cookies);
-            cookie_handler_changed (handler, c, NULL);
-            soup_cookie_free (c);
-            return;
-        }
-    }
-}
 /* vi: set et ts=4: */
