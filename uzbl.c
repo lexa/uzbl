@@ -636,17 +636,6 @@ link_hover_cb (WebKitWebView* page, const gchar* title, const gchar* link, gpoin
 }
 
 static void
-title_change_cb (WebKitWebView* web_view, WebKitWebFrame* web_frame, const gchar* title, gpointer data) {
-    (void) web_view;
-    (void) web_frame;
-    (void) data;
-    if (uzbl.gui.main_title)
-        g_free (uzbl.gui.main_title);
-    uzbl.gui.main_title = g_strdup (title);
-    update_title();
-}
-
-static void
 progress_change_cb (WebKitWebView* page, gint progress, gpointer data) {
     (void) page;
     (void) data;
@@ -657,8 +646,13 @@ progress_change_cb (WebKitWebView* page, gint progress, gpointer data) {
 static void
 load_finish_cb (WebKitWebView* page, WebKitWebFrame* frame, gpointer data) {
     (void) page;
-    (void) frame;
     (void) data;
+    if (frame == webkit_web_view_get_main_frame(uzbl.gui.web_view)) {
+        if (uzbl.gui.main_title)
+            g_free (uzbl.gui.main_title);
+        uzbl.gui.main_title = g_strdup (webkit_web_frame_get_title(frame));
+        update_title();
+    }
     if (uzbl.behave.load_finish_handler)
         run_handler(uzbl.behave.load_finish_handler, "");
 }
@@ -2258,7 +2252,6 @@ create_browser () {
     g->web_view = WEBKIT_WEB_VIEW (webkit_web_view_new ());
     gtk_container_add (GTK_CONTAINER (scrolled_window), GTK_WIDGET (g->web_view));
 
-    g_signal_connect (G_OBJECT (g->web_view), "title-changed", G_CALLBACK (title_change_cb), g->web_view);
     g_signal_connect (G_OBJECT (g->web_view), "load-progress-changed", G_CALLBACK (progress_change_cb), g->web_view);
     g_signal_connect (G_OBJECT (g->web_view), "load-committed", G_CALLBACK (load_commit_cb), g->web_view);
     g_signal_connect (G_OBJECT (g->web_view), "load-started", G_CALLBACK (load_start_cb), g->web_view);
