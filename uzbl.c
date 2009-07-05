@@ -1554,7 +1554,6 @@ set_icon() {
     } else {
         g_printerr ("Icon \"%s\" not found. ignoring.\n", uzbl.gui.icon);
     }
-    g_free (uzbl.gui.icon);
 }
 
 static void
