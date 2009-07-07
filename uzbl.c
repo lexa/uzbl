@@ -1735,7 +1735,7 @@ cmd_new_window() {
         (g_strcmp0(split[0], "spawn") == 0)) {
         g_free (uzbl.behave.new_window);
         uzbl.behave.new_window =
-            g_strdup_printf("sync_%s %s", split[0], split[1]);
+            g_strdup_printf("%s %s", split[0], split[1]);
     }
     g_strfreev (split);
 }
