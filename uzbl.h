@@ -276,6 +276,9 @@ static void
 link_hover_cb (WebKitWebView* page, const gchar* title, const gchar* link, gpointer data);
 
 static void
+title_change_cb (WebKitWebView* web_view, GParamSpec param_spec);
+
+static void
 progress_change_cb (WebKitWebView* page, gint progress, gpointer data);
 
 static void
