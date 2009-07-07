@@ -657,13 +657,8 @@ progress_change_cb (WebKitWebView* page, gint progress, gpointer data) {
 static void
 load_finish_cb (WebKitWebView* page, WebKitWebFrame* frame, gpointer data) {
     (void) page;
+    (void) frame;
     (void) data;
-    if (frame == webkit_web_view_get_main_frame(uzbl.gui.web_view)) {
-        if (uzbl.gui.main_title)
-            g_free (uzbl.gui.main_title);
-        uzbl.gui.main_title = g_strdup (webkit_web_frame_get_title(frame));
-        update_title();
-    }
     if (uzbl.behave.load_finish_handler)
         run_handler(uzbl.behave.load_finish_handler, "");
 }
