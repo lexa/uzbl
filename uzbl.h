@@ -197,6 +197,8 @@ typedef struct {
 
     /* group bindings: key -> action */
     GHashTable* bindings;
+
+    gboolean display_version;
 } Uzbl;
 
 
