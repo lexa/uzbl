@@ -262,6 +262,9 @@ new_window_cb (WebKitWebView *web_view, WebKitWebFrame *frame, WebKitNetworkRequ
 static gboolean
 mime_policy_cb(WebKitWebView *web_view, WebKitWebFrame *frame, WebKitNetworkRequest *request, gchar *mime_type,  WebKitWebPolicyDecision *policy_decision, gpointer user_data);
 
+WebKitWebView*
+create_web_view_cb (WebKitWebView  *web_view, WebKitWebFrame *frame, gpointer user_data);
+
 static gboolean
 download_cb (WebKitWebView *web_view, GObject *download, gpointer user_data);
 

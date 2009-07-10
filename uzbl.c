@@ -491,8 +491,7 @@ new_window_cb (WebKitWebView *web_view, WebKitWebFrame *frame, WebKitNetworkRequ
     const gchar* uri = webkit_network_request_get_uri (request);
     if (uzbl.state.verbose)
         printf("New window requested -> %s \n", uri);
-    webkit_web_policy_decision_ignore(policy_decision);
-    new_window_load_uri(uri);
+    webkit_web_policy_decision_use(policy_decision);
     return TRUE;
 }
 
@@ -511,6 +510,22 @@ mime_policy_cb(WebKitWebView *web_view, WebKitWebFrame *frame, WebKitNetworkRequ
     /* ...everything we can't displayed is downloaded */
     webkit_web_policy_decision_download (policy_decision);
     return TRUE;
+}
+
+WebKitWebView*
+create_web_view_cb (WebKitWebView  *web_view, WebKitWebFrame *frame, gpointer user_data) {
+    (void) web_view;
+    (void) frame;
+    (void) user_data;
+    if (uzbl.state.selected_url != NULL) {
+        if (uzbl.state.verbose)
+            printf("\nNew web view -> %s\n",uzbl.state.selected_url);
+        new_window_load_uri(uzbl.state.selected_url);
+    } else {
+        if (uzbl.state.verbose)
+            printf("New web view -> %s\n","Nothing to open, exiting");
+    }
+    return (NULL);
 }
 
 static gboolean
@@ -2275,6 +2290,7 @@ create_browser () {
     g_signal_connect (G_OBJECT (g->web_view), "hovering-over-link", G_CALLBACK (link_hover_cb), g->web_view);
     g_signal_connect (G_OBJECT (g->web_view), "new-window-policy-decision-requested", G_CALLBACK (new_window_cb), g->web_view);
     g_signal_connect (G_OBJECT (g->web_view), "download-requested", G_CALLBACK (download_cb), g->web_view);
+    g_signal_connect (G_OBJECT (g->web_view), "create-web-view", G_CALLBACK (create_web_view_cb), g->web_view);
     g_signal_connect (G_OBJECT (g->web_view), "mime-type-policy-decision-requested", G_CALLBACK (mime_policy_cb), g->web_view);
 
     return scrolled_window;
