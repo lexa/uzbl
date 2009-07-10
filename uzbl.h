@@ -172,6 +172,7 @@ typedef struct {
     gchar*   cmd_indicator;
     GString* html_buffer;
     guint    html_timeout;
+    gboolean print_version;
 
     /* command list: name -> Command  */
     GHashTable* commands;
@@ -261,9 +262,6 @@ new_window_cb (WebKitWebView *web_view, WebKitWebFrame *frame, WebKitNetworkRequ
 static gboolean
 mime_policy_cb(WebKitWebView *web_view, WebKitWebFrame *frame, WebKitNetworkRequest *request, gchar *mime_type,  WebKitWebPolicyDecision *policy_decision, gpointer user_data);
 
-WebKitWebView*
-create_web_view_cb (WebKitWebView  *web_view, WebKitWebFrame *frame, gpointer user_data);
-
 static gboolean
 download_cb (WebKitWebView *web_view, GObject *download, gpointer user_data);
 
@@ -277,7 +275,7 @@ static void
 link_hover_cb (WebKitWebView* page, const gchar* title, const gchar* link, gpointer data);
 
 static void
-title_change_cb (WebKitWebView* web_view, WebKitWebFrame* web_frame, const gchar* title, gpointer data);
+title_change_cb (WebKitWebView* web_view, GParamSpec param_spec);
 
 static void
 progress_change_cb (WebKitWebView* page, gint progress, gpointer data);

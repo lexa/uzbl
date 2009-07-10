@@ -75,6 +75,8 @@ GOptionEntry entries[] =
         "Config file (this is pretty much equivalent to uzbl < FILE )", "FILE" },
     { "socket",  's', 0, G_OPTION_ARG_INT, &uzbl.state.socket_id,
         "Socket ID", "SOCKET" },
+    { "version",  'V', 0, G_OPTION_ARG_NONE, &uzbl.behave.print_version,
+        "Print the version and exit", NULL },
     { NULL,      0, 0, 0, NULL, NULL, NULL }
 };
 
@@ -489,8 +491,9 @@ new_window_cb (WebKitWebView *web_view, WebKitWebFrame *frame, WebKitNetworkRequ
     const gchar* uri = webkit_network_request_get_uri (request);
     if (uzbl.state.verbose)
         printf("New window requested -> %s \n", uri);
-    webkit_web_policy_decision_use(policy_decision);
-    return (TRUE);
+    webkit_web_policy_decision_ignore(policy_decision);
+    new_window_load_uri(uri);
+    return TRUE;
 }
 
 static gboolean
@@ -508,22 +511,6 @@ mime_policy_cb(WebKitWebView *web_view, WebKitWebFrame *frame, WebKitNetworkRequ
     /* ...everything we can't displayed is downloaded */
     webkit_web_policy_decision_download (policy_decision);
     return TRUE;
-}
-
-WebKitWebView*
-create_web_view_cb (WebKitWebView  *web_view, WebKitWebFrame *frame, gpointer user_data) {
-    (void) web_view;
-    (void) frame;
-    (void) user_data;
-    if (uzbl.state.selected_url != NULL) {
-        if (uzbl.state.verbose)
-            printf("\nNew web view -> %s\n",uzbl.state.selected_url);
-        new_window_load_uri(uzbl.state.selected_url);
-    } else {
-        if (uzbl.state.verbose)
-            printf("New web view -> %s\n","Nothing to open, exiting");
-    }
-    return (NULL);
 }
 
 static gboolean
@@ -637,13 +624,13 @@ link_hover_cb (WebKitWebView* page, const gchar* title, const gchar* link, gpoin
 }
 
 static void
-title_change_cb (WebKitWebView* web_view, WebKitWebFrame* web_frame, const gchar* title, gpointer data) {
+title_change_cb (WebKitWebView* web_view, GParamSpec param_spec) {
     (void) web_view;
-    (void) web_frame;
-    (void) data;
+    (void) param_spec;
+    const gchar *title = webkit_web_view_get_title(web_view);
     if (uzbl.gui.main_title)
         g_free (uzbl.gui.main_title);
-    uzbl.gui.main_title = g_strdup (title);
+    uzbl.gui.main_title = title ? g_strdup (title) : g_strdup ("(no title)");
     update_title();
 }
 
@@ -804,9 +791,11 @@ static void
 set_var(WebKitWebView *page, GArray *argv, GString *result) {
     (void) page; (void) result;
     gchar **split = g_strsplit(argv_idx(argv, 0), "=", 2);
-    gchar *value = parseenv(g_strdup(split[1] ? g_strchug(split[1]) : " "));
-    set_var_value(g_strstrip(split[0]), value);
-    g_free(value);
+    if (split[0] != NULL) {
+        gchar *value = parseenv(g_strdup(split[1] ? g_strchug(split[1]) : " "));
+        set_var_value(g_strstrip(split[0]), value);
+        g_free(value);
+    }
     g_strfreev(split);
 }
 
@@ -1567,7 +1556,6 @@ set_icon() {
     } else {
         g_printerr ("Icon \"%s\" not found. ignoring.\n", uzbl.gui.icon);
     }
-    g_free (uzbl.gui.icon);
 }
 
 static void
@@ -2138,9 +2126,11 @@ update_title (void) {
         if (b->status_background) {
             GdkColor color;
             gdk_color_parse (b->status_background, &color);
-            //labels and hboxes do not draw their own background.  applying this on the window is ok as we the statusbar is the only affected widget.  (if not, we could also use GtkEventBox)
+            //labels and hboxes do not draw their own background. applying this on the vbox is ok as the statusbar is the only affected widget. (if not, we could also use GtkEventBox)
             if (uzbl.gui.main_window)
                 gtk_widget_modify_bg (uzbl.gui.main_window, GTK_STATE_NORMAL, &color);
+            else if (uzbl.gui.plug)
+                gtk_widget_modify_bg (GTK_WIDGET(uzbl.gui.plug), GTK_STATE_NORMAL, &color);
         }
     } else {
         if (b->title_format_long) {
@@ -2276,7 +2266,7 @@ create_browser () {
     g->web_view = WEBKIT_WEB_VIEW (webkit_web_view_new ());
     gtk_container_add (GTK_CONTAINER (scrolled_window), GTK_WIDGET (g->web_view));
 
-    g_signal_connect (G_OBJECT (g->web_view), "title-changed", G_CALLBACK (title_change_cb), g->web_view);
+    g_signal_connect (G_OBJECT (g->web_view), "notify::title", G_CALLBACK (title_change_cb), NULL);
     g_signal_connect (G_OBJECT (g->web_view), "load-progress-changed", G_CALLBACK (progress_change_cb), g->web_view);
     g_signal_connect (G_OBJECT (g->web_view), "load-committed", G_CALLBACK (load_commit_cb), g->web_view);
     g_signal_connect (G_OBJECT (g->web_view), "load-started", G_CALLBACK (load_start_cb), g->web_view);
@@ -2285,7 +2275,6 @@ create_browser () {
     g_signal_connect (G_OBJECT (g->web_view), "hovering-over-link", G_CALLBACK (link_hover_cb), g->web_view);
     g_signal_connect (G_OBJECT (g->web_view), "new-window-policy-decision-requested", G_CALLBACK (new_window_cb), g->web_view);
     g_signal_connect (G_OBJECT (g->web_view), "download-requested", G_CALLBACK (download_cb), g->web_view);
-    g_signal_connect (G_OBJECT (g->web_view), "create-web-view", G_CALLBACK (create_web_view_cb), g->web_view);
     g_signal_connect (G_OBJECT (g->web_view), "mime-type-policy-decision-requested", G_CALLBACK (mime_policy_cb), g->web_view);
 
     return scrolled_window;
@@ -2511,8 +2500,13 @@ settings_init () {
     for (i = 0; default_config[i].command != NULL; i++) {
         parse_cmd_line(default_config[i].command, NULL);
     }
+    
+    if (g_strcmp0(s->config_file, "-") == 0) {
+        s->config_file = NULL;
+        create_stdin();
+    }
 
-    if (!s->config_file) {
+    else if (!s->config_file) {
         s->config_file = find_xdg_file (0, "/uzbl/config");
     }
 
@@ -2712,7 +2706,14 @@ main (int argc, char* argv[]) {
     g_option_context_parse (context, &argc, &argv, NULL);
     g_option_context_free(context);
 
+    if (uzbl.behave.print_version) {
+        printf("Commit: %s\n", COMMIT);
+        exit(0);
+    }
+
     gchar *uri_override = (uzbl.state.uri ? g_strdup(uzbl.state.uri) : NULL);
+    if (argc > 1 && !uzbl.state.uri)
+        uri_override = g_strdup(argv[1]);
     gboolean verbose_override = uzbl.state.verbose;
 
     /* initialize hash table */
@@ -2797,8 +2798,6 @@ main (int argc, char* argv[]) {
 
     /* WebInspector */
     set_up_inspector();
-
-    create_stdin();
 
     if (verbose_override > uzbl.state.verbose)
         uzbl.state.verbose = verbose_override;
