@@ -2255,7 +2255,6 @@ create_browser () {
     g_signal_connect (G_OBJECT (g->web_view), "hovering-over-link", G_CALLBACK (link_hover_cb), g->web_view);
     g_signal_connect (G_OBJECT (g->web_view), "new-window-policy-decision-requested", G_CALLBACK (new_window_cb), g->web_view);
     g_signal_connect (G_OBJECT (g->web_view), "download-requested", G_CALLBACK (download_cb), g->web_view);
-    g_signal_connect (G_OBJECT (g->web_view), "create-web-view", G_CALLBACK (create_web_view_cb), g->web_view);
     g_signal_connect (G_OBJECT (g->web_view), "mime-type-policy-decision-requested", G_CALLBACK (mime_policy_cb), g->web_view);
 
     return scrolled_window;
